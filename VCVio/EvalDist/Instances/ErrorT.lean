@@ -55,7 +55,8 @@ noncomputable instance (ε : Type u) (m : Type u → Type v) [Monad m] [HasEvalS
     show Except.ok y ∈ support (pure (Except.ok x) : m _) ↔ y = x
     simp
   toSet.toFun_bind' mx f := Set.ext fun x => by
-    simp only [Set.mem_preimage, Set.bind_def, Set.mem_iUnion₂]
+    erw [Set.bind_def]
+    simp only [Set.mem_preimage, Set.mem_iUnion₂]
     show Except.ok x ∈ support (mx.run >>= ExceptT.bindCont f) ↔ _
     rw [mem_support_bind_iff]
     constructor

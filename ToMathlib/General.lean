@@ -222,9 +222,9 @@ lemma List.countP_eq_sum_fin_ite {α : Type*} (xs : List α) (p : α → Bool) :
       Finset.filter_empty, Finset.card_empty, CharP.cast_eq_zero, countP_nil]
   }
   | cons x xs h => {
-    rw [List.countP_cons, ← h]
-    refine (Fin.sum_univ_succ _).trans ((add_comm _ _).trans ?_)
-    simp
+    simp [List.countP_cons, ← h, List.getElem_cons]
+    refine (Fin.card_filter_univ_succ _).trans ?_
+    grind
   }
 
 lemma List.card_filter_getElem_eq {α : Type*} [DecidableEq α]

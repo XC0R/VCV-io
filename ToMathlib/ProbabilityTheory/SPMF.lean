@@ -3,11 +3,12 @@ Copyright (c) 2025 Devon Tuma. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Devon Tuma
 -/
-import Mathlib.Probability.ProbabilityMassFunction.Monad
-import VCVio.Prelude
+module
+
+public import Mathlib.Probability.ProbabilityMassFunction.Monad
 import Batteries.Control.AlternativeMonad
-import ToMathlib.Control.Monad.Hom
-import ToMathlib.ProbabilityTheory.Coupling
+public import ToMathlib.Control.Monad.Hom
+public import ToMathlib.Control.OptionT
 
 /-!
 # Sub-Probability Distributions
@@ -17,6 +18,8 @@ The probability of failure is the missing mass to make the `PMF` sum to `1`.
 -/
 
 open ENNReal
+
+@[expose] public section
 
 attribute [simp] PMF.coe_le_one PMF.apply_ne_top
 
@@ -94,14 +97,74 @@ lemma zero_def : (0 : SPMF α) = failure := rfl
 @[simp, grind =]
 lemma toPMF_zero : (0 : SPMF α).toPMF = PMF.pure none := rfl
 
+
+section to_sort
+
+theorem pure_eq_pmf_pure {a : α} : (pure a : SPMF α) = PMF.pure a := by
+  simp [pure, liftM, OptionT.pure, monadLift, MonadLift.monadLift, OptionT.lift, PMF.instMonad]
+
+theorem bind_eq_pmf_bind {p : SPMF α} {f : α → SPMF β} :
+    (p >>= f) = PMF.bind p (fun a => match a with | some a' => f a' | none => PMF.pure none) := by
+  simp [bind, OptionT.bind, PMF.instMonad, OptionT.mk]
+  rfl
+
+-- @[simp] lemma map_some_apply_some (p : PMF α) (x : α) : p.map some (some x) = p x := by
+--   simp [PMF.map_apply]
+--   rw [tsum_eq_single x (by intro b hb; simp [Ne.symm hb])]
+--   simp
+
+-- @[simp] lemma PMF.map_some_apply_some (p : PMF α) (x : α) : (some <$> p) (some x) = p x := by
+--   change p.map some (some x) = p x
+--   simp [PMF.map_apply]
+--   rw [tsum_eq_single x (by intro b hb; simp [Ne.symm hb])]
+--   simp
+
+/-- `pure a` in SPMF equals `PMF.pure (some a)` as a PMF on `Option α`. -/
+lemma spmf_pure_eq (a : α) : (pure a : SPMF α) = PMF.pure (some a) := by
+  have : (pure a : SPMF α) = liftM (PMF.pure a) := by
+    simp [pure, liftM, OptionT.pure, monadLift, MonadLift.monadLift, OptionT.lift, PMF.instMonad]
+  rw [this]; change (PMF.pure a).bind (fun x => PMF.pure (some x)) = _; rw [PMF.pure_bind]
+
+/-- The functor map for SPMF equals `PMF.map (Option.map f)`. -/
+lemma spmf_fmap_eq_map (f : α → β) (c : SPMF α) :
+    (f <$> c : SPMF β) = PMF.map (Option.map f) c := by
+  have : (f <$> c : SPMF β) =
+    PMF.bind c (fun a => match a with
+      | some a' => (pure (f a') : SPMF β) | none => PMF.pure none) := by
+    show (c >>= (pure ∘ f)) = _; exact bind_eq_pmf_bind
+  rw [this]; apply PMF.ext; intro x
+  simp only [PMF.bind_apply, PMF.map_apply]
+  congr 1; ext y; cases y with
+  | none => cases x <;> simp [PMF.pure_apply]
+  | some a => simp only [spmf_pure_eq, PMF.pure_apply]; cases x <;> simp
+
+/-- If `PMF.map f c = PMF.pure b` and `f a ≠ b`, then `c a = 0`. -/
+lemma pmf_map_eq_pure_zero {γ δ : Type*} (f : γ → δ) (c : PMF γ) (b : δ)
+    (h : PMF.map f c = PMF.pure b) (a : γ) (ha : f a ≠ b) : c a = 0 := by
+  have key := congr_fun (congrArg DFunLike.coe h) (f a)
+  simp [PMF.map_apply, PMF.pure_apply, ha] at key
+  exact key a rfl
+
+/-- A PMF that is zero at all points except `a` equals `PMF.pure a`. -/
+lemma pmf_eq_pure_of_forall_ne_eq_zero {γ : Type*} (p : PMF γ) (a : γ)
+    (h : ∀ x, x ≠ a → p x = 0) : p = PMF.pure a := by
+  ext x; by_cases hx : x = a
+  · subst hx; simp only [PMF.pure_apply, if_true]
+    rw [← p.tsum_coe]; exact (tsum_eq_single x (fun b hb => h b hb)).symm
+  · simp [PMF.pure_apply, hx, h x hx]
+
+end to_sort
+
 @[simp, grind =]
 lemma toPMF_bind (p : SPMF α) (q : α → SPMF β) :
     (p >>= q).toPMF = Option.elimM p.toPMF (PMF.pure none) (fun x => (q x).toPMF) := by
   simp [← run_eq_toPMF]
+  convert OptionT.run_bind q
 
 @[simp, grind =]
 lemma toPMF_map (p : SPMF α) (f : α → β) : (f <$> p).toPMF = Option.map f <$> p.toPMF := by
   simp [← run_eq_toPMF]
+  exact OptionT.run_map f p
 
 @[simp, grind =]
 lemma zero_apply (x : α) : (0 : SPMF α) x = 0 := by aesop
@@ -183,39 +246,5 @@ lemma support_pure (x : α) : (pure x : SPMF α).support = {x} := by aesop
 
 @[simp] lemma map_mk (p : PMF (Option α)) (f : α → β) :
     f <$> SPMF.mk p = SPMF.mk (Option.map f <$> p) := by aesop
-
-/-- Couplings specialized to VCVio's canonical `SPMF`. -/
-abbrev IsCoupling (c : SPMF (α × β)) (p : SPMF α) (q : SPMF β) : Prop :=
-  SubPMF.IsCoupling c p q
-
-/-- Coupling witness type specialized to VCVio's canonical `SPMF`. -/
-def Coupling (p : SPMF α) (q : SPMF β) :=
-  { c : SPMF (α × β) // IsCoupling c p q }
-
-/-- Bind rule for `SPMF` couplings. -/
-theorem IsCoupling.bind {α₁ α₂ β₁ β₂ : Type u}
-    {p : SPMF α₁} {q : SPMF α₂} {f : α₁ → SPMF β₁} {g : α₂ → SPMF β₂}
-    (c : Coupling p q) (d : (a₁ : α₁) → (a₂ : α₂) → SPMF (β₁ × β₂))
-    (h : ∀ (a₁ : α₁) (a₂ : α₂), c.1.1 (some (a₁, a₂)) ≠ 0 → IsCoupling (d a₁ a₂) (f a₁) (g a₂)) :
-    IsCoupling (c.1 >>= λ (p : α₁ × α₂) => d p.1 p.2) (p >>= f) (q >>= g) :=
-  SubPMF.IsCoupling.bind ⟨c.1, c.2⟩ d h
-
-/-- Existential bind rule for `SPMF` couplings. -/
-theorem IsCoupling.exists_bind {α₁ α₂ β₁ β₂ : Type u}
-    {p : SPMF α₁} {q : SPMF α₂} {f : α₁ → SPMF β₁} {g : α₂ → SPMF β₂}
-    (c : Coupling p q)
-    (h : ∀ (a₁ : α₁) (a₂ : α₂), ∃ (d : SPMF (β₁ × β₂)), IsCoupling d (f a₁) (g a₂)) :
-    ∃ (d : SPMF (β₁ × β₂)), IsCoupling d (p >>= f) (q >>= g) :=
-  SubPMF.IsCoupling.exists_bind ⟨c.1, c.2⟩ h
-
-/-- Diagonal self-coupling proof. -/
-theorem IsCoupling.refl (p : SPMF α) :
-    IsCoupling (p >>= fun a => pure (a, a)) p p :=
-  SubPMF.IsCoupling.refl p
-
-/-- Diagonal self-coupling witness. -/
-noncomputable def Coupling.refl (p : SPMF α) : Coupling p p :=
-  ⟨p >>= fun a => pure (a, a), IsCoupling.refl p⟩
-
 
 end SPMF

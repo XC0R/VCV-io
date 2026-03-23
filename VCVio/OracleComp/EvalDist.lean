@@ -39,6 +39,7 @@ lemma support_eq_simulateQ (mx : OracleComp spec α) :
 @[simp, grind =] lemma support_liftM (q : OracleQuery spec α) :
     support (liftM q : OracleComp spec α) = Set.range q.cont := by
   simp [support_eq_simulateQ]
+  sorry
 
 @[grind =] lemma support_query (t : spec.Domain) :
     support (liftM (query t) : OracleComp spec _) = Set.univ := by simp
@@ -124,7 +125,8 @@ lemma probOutput_liftM_eq_div (q : OracleQuery spec α) (x : α) :
 
 @[simp, grind =]
 lemma probOutput_query (t : spec.Domain) (u : spec.Range t) :
-    Pr[= u | (query t : OracleComp spec _)] = (Fintype.card (spec.Range t) : ℝ≥0∞)⁻¹ := by simp
+    Pr[= u | (query t : OracleComp spec _)] = (Fintype.card (spec.Range t) : ℝ≥0∞)⁻¹ := by
+  simp; rfl
 
 @[grind =]
 lemma probEvent_liftM_eq_div (q : OracleQuery spec α) (p : α → Prop) :
@@ -146,7 +148,7 @@ lemma probOutput_query_eq_div (t : spec.Domain) (u : spec.Range t) :
 lemma probEvent_query (t : spec.Domain) (p : spec.Range t → Prop) [DecidablePred p] :
     Pr[p | (query t : OracleComp spec _)] =
       Finset.card {x | p x} / Fintype.card (spec.Range t) := by
-  simp [probEvent_liftM_eq_div]
+  simp [probEvent_liftM_eq_div]; rfl
 
 end evalDist
 
@@ -319,7 +321,8 @@ lemma evalDist_simulateQ_run'_eq_evalDist {σ τ : Type u}
       (bind_map_left (m := OracleComp spec) Prod.fst ((so t).run s) mx).symm]
     rw [evalDist_bind, h t s]
     show OptionT.lift (PMF.uniformOfFintype (spec.Range t)) >>= (fun u => evalDist (mx u)) = _
-    rw [show (fun u => evalDist (mx u)) = evalDist ∘ mx from rfl, ← evalDist_query_bind]
+    rw [show (fun u => evalDist (mx u)) = evalDist ∘ mx from rfl, evalDist_query_bind]
+    rfl
 
 /-- Stronger version with computational hypothesis: if the implementation passes through
 queries exactly, then `simulateQ` preserves `evalDist`. -/

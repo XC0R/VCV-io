@@ -236,7 +236,7 @@ def single [DecidableEq ι] (i : ι) : QueryCount ι := Function.update 0 i 1
 @[simp]
 lemma single_le_iff_pos [DecidableEq ι] (i : ι) (qc : QueryCount ι) :
     single i ≤ qc ↔ 0 < qc i := by
-  simp [single, Function.update, Pi.hasLe]
+  unfold single Function.update
   constructor <;> intro h
   · have : 1 ≤ qc i := by simpa using h i
     exact this
@@ -528,6 +528,7 @@ lemma pop_eq_some_of_cons (seed : QuerySeed spec) (i : ι)
     seed.pop i = some (u, Function.update seed i us) := by
   unfold pop
   simp [h]
+  rfl
 
 lemma cons_of_pop_eq_some (seed : QuerySeed spec) (i : ι)
     (u : spec.Range i) (rest : QuerySeed spec)

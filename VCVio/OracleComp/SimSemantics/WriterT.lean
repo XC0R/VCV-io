@@ -34,7 +34,8 @@ lemma fst_map_writerT_run_simulateQ
   | query_bind t oa ih =>
     rw [simulateQ_bind, simulateQ_query, WriterT.run_bind, map_bind]
     have heq : ((query t).cont <$> so (query t).input) = so t := by
-      rw [OracleQuery.cont_query t, id_map]
+      rw [OracleQuery.cont_query t]
+      erw [id_map]
       simp only [OracleQuery.input_query]
     rw [heq]
     refine (bind_congr fun x => ?_).trans (by rw [← bind_map_left, hso t])

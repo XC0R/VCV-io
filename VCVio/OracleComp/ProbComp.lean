@@ -205,8 +205,7 @@ instance hasUniformSelect_of_hasUniformSelect!
 /-- Compatibility of the `$! xs` operation with `$ xs` given the inferred instance.
 TODO: I think we probably want to `simp` in the other direction when possible? -/
 @[simp, grind =] lemma liftM_uniformSelect! [HasUniformSelect! cont β]
-    (xs : cont) : (liftM ($! xs) : OptionT ProbComp β) = $ xs := by
-  simp [hasUniformSelect_of_hasUniformSelect!, OptionT.liftM_def]
+    (xs : cont) : (liftM ($! xs) : OptionT ProbComp β) = $ xs := by rfl
 
 lemma uniformSelect_eq_liftM_uniformSelect! [HasUniformSelect! cont β]
     (xs : cont) : ($ xs : OptionT ProbComp β) = liftM ($! xs) := by grind
@@ -260,6 +259,7 @@ lemma probOutput_uniformSelectList [DecidableEq α] (xs : List α) (x : α) :
   | y :: ys => by
     rw [List.count, ← List.countP_eq_sum_fin_ite]
     simp [uniformSelectList_cons, probOutput_map_eq_sum_fintype_ite, div_eq_mul_inv, @eq_comm _ x]
+    rfl
 
 @[simp, grind =] lemma probFailure_uniformSelectList (xs : List α) :
     Pr[⊥ | $ xs] = if xs.isEmpty then 1 else 0 := match xs with

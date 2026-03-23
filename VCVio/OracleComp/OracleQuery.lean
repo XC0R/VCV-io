@@ -76,8 +76,8 @@ instance {α} [h : Subsingleton ι] [h' : Subsingleton α] :
     Subsingleton (OracleQuery spec α) where
   allEq := fun ⟨t, f⟩ ⟨u, g⟩ => by
     cases h.allEq t u
-    simp [OracleQuery.ext_iff, funext_iff]
-    refine fun x => h'.allEq (f x) (g x)
+    simp [OracleQuery.ext_iff]
+    refine funext fun x => h'.allEq (f x) (g x)
 
 /-- Query an oracle on in input `t` to get a result in the corresponding `range t`.
 Note: could consider putting this in the `OracleQuery` monad, type inference struggles tho. -/

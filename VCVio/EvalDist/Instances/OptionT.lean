@@ -34,8 +34,10 @@ full `HasEvalSPMF m` — only `HasEvalSet m` is needed (e.g., for `support_liftM
 noncomputable instance (m : Type u → Type v) [Monad m] [HasEvalSet m] :
     HasEvalSet (OptionT m) where
   toSet.toFun α mx := some ⁻¹' (support (OptionT.run mx))
-  toSet.toFun_pure' mx := Set.ext fun x => by simp
-  toSet.toFun_bind' mx my := Set.ext fun x => by simp [Option.elimM, Option.exists]
+  toSet.toFun_pure' mx := Set.ext fun x => by simp; rfl
+  toSet.toFun_bind' mx my := Set.ext fun x => by
+    erw [Set.bind_def]
+    simp [Option.elimM, Option.exists]
 
 variable [HasEvalSet m]
 
@@ -185,26 +187,6 @@ lemma probFailure_liftM [LawfulMonad m] (mx : m α) :
 lemma probFailure_lift [LawfulMonad m] (mx : m α) :
     Pr[⊥ | OptionT.lift mx] = Pr[⊥ | mx] := by
   simp [probFailure_eq]
-
-/-! ### SubPMF / SPMF bridge
-
-`SubPMF α` is `OptionT PMF α` and `SPMF α` is also `OptionT PMF α`, but they carry
-different `HasEvalSPMF` instances. These lemmas equate `probOutput` and `probEvent`
-across the two views. -/
-
-lemma probOutput_subpmf_eq_spmf (p : SPMF α) (x : α) :
-    @probOutput SubPMF OptionT.instMonad α (instHasEvalSPMF PMF) (p : SubPMF α) x =
-      @probOutput SPMF SPMF.instAlternativeMonad.toMonad α SPMF.instHasEvalSPMF p x := by
-  rw [probOutput_eq, PMF.probOutput_eq_apply, SPMF.probOutput_eq_apply]
-  rfl
-
-lemma probEvent_subpmf_eq_spmf (p : SPMF α) (q : α → Prop) :
-    @probEvent SubPMF OptionT.instMonad α (instHasEvalSPMF PMF) (p : SubPMF α) q =
-      @probEvent SPMF SPMF.instAlternativeMonad.toMonad α SPMF.instHasEvalSPMF p q := by
-  classical
-  rw [probEvent_eq_tsum_ite, probEvent_eq_tsum_ite]
-  refine tsum_congr fun x => ?_
-  by_cases hq : q x <;> simp [hq, probOutput_subpmf_eq_spmf]
 
 end HasEvalSPMF
 
